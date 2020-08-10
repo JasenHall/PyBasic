@@ -1,4 +1,4 @@
-import tokenizer
+from tokenizer import Lexer
 from interpreter import Interpreter
 
 ST = {}
@@ -6,9 +6,10 @@ ST = {}
 
 def parse(text, i):
     # tokenize source stream
-    source = tokenizer.mytokenize(text)
+    l = Lexer(text)
+    source = l.mytokenize()
     #interpret token code
-    return i.compileStatement(source)
+    return i.interpret(source)
 
 
 
