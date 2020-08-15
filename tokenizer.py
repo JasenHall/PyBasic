@@ -11,6 +11,14 @@ KEYWORDS = [
     "NEXT",
     "ELSE",
     "ENDIF",
+    "INPUT",
+    "LIST",
+    "NEW",
+    "RUN",
+    "LOAD",
+    "SAVE",
+    "REM",
+    "RND"
 ]
 
 
@@ -37,6 +45,20 @@ class Tokentype(enum.Enum):
     FOR = "FOR"
     NEXT = "NEXT"
     ENDIF = "ENDIF"
+    LT = "LT"
+    LTE = "LTE"
+    GT = "GT"
+    GTE = "GTE"
+    NE = "NE"
+    COLON = "COLON"
+    INPUT = "INPUT"
+    LIST = "LIST"
+    NEW = "NEW"
+    RUN = "RUN"
+    SAVE = "SAVE"
+    LOAD = "LOAD"
+    REM = "REM"
+    RND = "RND"
 
 
 class Token:
@@ -46,10 +68,10 @@ class Token:
 
 
 class Lexer:
-    def __init__(self, text):
-        self.text = text
+    def __init__(self):
+        self.text = None
         self.pos = 0
-        self.current_char = self.text[self.pos]
+        self.current_char = None
 
     def error(self):
         raise Exception('Invalid character')
@@ -85,12 +107,16 @@ class Lexer:
     def string(self):
         """Return a string consumed from the input."""
         result = ""
-        self.advance() # move past the quote identifier
+        self.advance()  # move past the quote identifier
         while self.current_char is not None and self.current_char is not '"':
             result += self.current_char
             self.advance()
-        self.advance() # move past the closing quote identifier
+        self.advance()  # move past the closing quote identifier
         return result
+
+    def peek(self):
+        """Peek at the next character without advancing"""
+        return self.text[self.pos+1]
 
     def get_next_token(self):
         """Lexical analyzer (also known as scanner or tokenizer)
@@ -107,7 +133,7 @@ class Lexer:
             if self.current_char.isdigit():
                 return Token(Tokentype.INTEGER, self.integer())
 
-            if self.current_char.isalpha():  #  must start with alpha char
+            if self.current_char.isalpha():  # must start with alpha char
                 value = self.identifier()
                 if value.upper() in KEYWORDS:
                     return Token(Tokentype(value.upper()), value.upper())
@@ -149,19 +175,45 @@ class Lexer:
                 self.advance()
                 return Token(Tokentype.SEMI, ';')
 
+            if self.current_char == ':':
+                self.advance()
+                return Token(Tokentype.COLON, ':')
+
+            if self.current_char == ">":
+                if self.peek() == "=":
+                    self.advance()
+                    self.advance()
+                    return Token(Tokentype.GTE, ">=")
+                else:
+                    self.advance()
+                    return Token(Tokentype.GT, ">")
+
+            if self.current_char == "<":
+                if self.peek() == "=":
+                    self.advance()
+                    self.advance()
+                    return Token(Tokentype.LTE, "<=")
+                elif self.peek() == ">":
+                    self.advance()
+                    self.advance()
+                    return Token(Tokentype.NE, "<>")
+                else:
+                    self.advance()
+                    return Token(Tokentype.LT, "<")
+
             self.error()
 
         return Token(Tokentype.EOF, None)
 
-    def mytokenize(self):
+    def tokenize(self, text):
         """ Return a list of tokens from the input"""
+        self.text = text
+        self.pos = 0
+        self.current_char = self.text[self.pos]
         token_list = []
         token = self.get_next_token()
         while token.type is not Tokentype.EOF:
             token_list.append(token)
             token = self.get_next_token()
-        token_list.append(token)  #  append the EOF token
+        token_list.append(token)   # append the EOF token
         return token_list
-
-
-

@@ -1,15 +1,6 @@
-from tokenizer import Lexer
 from interpreter import Interpreter
-
-ST = {}
-
-
-def parse(text, i):
-    # tokenize source stream
-    l = Lexer(text)
-    source = l.mytokenize()
-    #interpret token code
-    return i.interpret(source)
+import re
+from colored import fore, back, style
 
 
 
@@ -18,18 +9,36 @@ def repl():
     print('Type "exit" to quit.')
     i = Interpreter()
     while True:
-        try:
-            source = input("> ")
-            if source.upper() == "EXIT":
-                break
+        source = input("> ")
+        if source.upper() == "EXIT":
+            break
+        if source.upper() == "DEBUG ON":
+            print("Debug flag turned on.")
+            i.debug = True
+            continue
+        if source.upper() == "DEBUG OFF":
+            print("Debug flag turned off.")
+            i.debug = False
+            continue
+        regex = re.compile('^[0-9]+')
+        result = regex.match(source)
+        if result:
+            lineno = int(result.group())
+            code = source[result.end():]
+            if code == "":
+                i.program.pop(lineno, -1)  # delete code line
+            else:
+                # todo - think about how to process code before storing
+                # should it be parsed and tokenized and grammatically checked ?
+                i.program.update({lineno: code})  # insert plain code line
+        else:
             try:
-                parse(source, i)
+                i.execute(source)
+            except IndexError as e:
+                pass
             except SyntaxError as e:
                 print(e)
-        except (RuntimeError, IndexError) as e:
-            print("IndexError: %s" % e)
-        except KeyboardInterrupt:
-            print("\nKeyboardInterrupt")
+
 
 if __name__ == '__main__':
     repl()
