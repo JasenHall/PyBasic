@@ -1,11 +1,9 @@
 from interpreter import Interpreter
 import re
-from colored import fore, back, style
-
 
 
 def repl():
-    print('PyBasic v0.1 (c) 2020 Gently Solutions Ltd')
+    print('PyBasic v0.3 (c) 2020 Gently Solutions Ltd')
     print('Type "exit" to quit.')
     i = Interpreter()
     while True:

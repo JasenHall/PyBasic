@@ -7,6 +7,8 @@ KEYWORDS = [
     "PRINT",
     "GOTO",
     "FOR",
+    "TO",
+    "STEP",
     "THEN",
     "NEXT",
     "ELSE",
@@ -18,7 +20,9 @@ KEYWORDS = [
     "LOAD",
     "SAVE",
     "REM",
-    "RND"
+    "RND",
+    "CLEAR",
+    "DIM",
 ]
 
 
@@ -31,6 +35,8 @@ class Tokentype(enum.Enum):
     DIV = "DIV"
     LPAREN = "LPAREN"
     RPAREN = "RPAREN"
+    LBRACK = "LBRACK"
+    RBRACK = "RBRACK"
     STRING = "STRING"
     IDENTIFIER = "IDENTIFIER"
     EOF = "EOF"
@@ -43,6 +49,8 @@ class Tokentype(enum.Enum):
     IF = "IF"
     GOTO = "GOTO"
     FOR = "FOR"
+    TO = "TO"
+    STEP = "STEP"
     NEXT = "NEXT"
     ENDIF = "ENDIF"
     LT = "LT"
@@ -59,6 +67,9 @@ class Tokentype(enum.Enum):
     LOAD = "LOAD"
     REM = "REM"
     RND = "RND"
+    CLEAR = "CLEAR"
+    DEBUG = "DEBUG"
+    DIM = "DIM"
 
 
 class Token:
@@ -97,7 +108,7 @@ class Lexer:
         return int(result)
 
     def identifier(self):
-        """Return a (multidigit) integer consumed from the input."""
+        """Return a multichar identifier consumed from the input."""
         result = ""
         while self.current_char is not None and self.current_char.isalnum():
             result += self.current_char
@@ -167,6 +178,14 @@ class Lexer:
                 self.advance()
                 return Token(Tokentype.RPAREN, ')')
 
+            if self.current_char == '[':
+                self.advance()
+                return Token(Tokentype.LBRACK, '[')
+
+            if self.current_char == ']':
+                self.advance()
+                return Token(Tokentype.RBRACK, ']')
+
             if self.current_char == '=':
                 self.advance()
                 return Token(Tokentype.EQUALS, '=')
@@ -178,6 +197,10 @@ class Lexer:
             if self.current_char == ':':
                 self.advance()
                 return Token(Tokentype.COLON, ':')
+
+            if self.current_char == '?':
+                self.advance()
+                return Token(Tokentype.DEBUG, '?')
 
             if self.current_char == ">":
                 if self.peek() == "=":

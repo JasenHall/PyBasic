@@ -15,10 +15,19 @@ SYMBOLS = (
 )
 
 
+class Loop:
+    def __init__(self, start, end, line, step=1):
+        self.start = start
+        self.end = end
+        self.line = line
+        self.step = step
+
+
 class Interpreter:
 
     def __init__(self):
         self.symboltable = {}
+        self.looptable = {}
         self.token_stream = None
         self.current_token = None
         self.position = 0  #
@@ -57,6 +66,7 @@ class Interpreter:
         # interpret token streamlist
         self.interpret()
         print("SYMBOL TABLE {}".format(self.symboltable)) if self.debug else False
+        print("LOOP TABLE {}".format(self.looptable)) if self.debug else False
         # print("Program {}".format(self.program)) if self.debug else False
 
     def run(self):
@@ -71,7 +81,6 @@ class Interpreter:
                 self.linepos += 1
         except KeyboardInterrupt:
             print("** BREAK **")
-
 
     # ######################### processing methods ##################################
     def compileStatement(self):
@@ -94,6 +103,12 @@ class Interpreter:
         elif val == "LIST":
             self.consume(Tokentype(val))
             self.compileList()
+        elif val == "FOR":
+            self.consume(Tokentype(val))
+            self.compileFor()
+        elif val == "NEXT":
+            self.consume(Tokentype(val))
+            self.compileNext()
         elif val == "RUN":
             self.consume(Tokentype(val))
             self.run()
@@ -102,14 +117,17 @@ class Interpreter:
             self.compileGoto()
         elif val == "NEW":
             self.consume(Tokentype(val))
-            self.program = {}
             self.steps = []
             self.linepos = 0
+            self.program = self.symboltable = self.looptable = {}
+        elif val == "CLEAR":
+            self.consume(Tokentype(val))
+            self.symboltable = self.looptable = {}
         elif val == "LOAD":
             self.consume(Tokentype(val))
             name = self.current_token.value
             self.consume(Tokentype.STRING)
-            with open(name+".bas", 'rb') as readfile:
+            with open(name + ".bas", 'rb') as readfile:
                 self.program = pickle.load(readfile)
                 self.steps = []
                 self.linepos = 0
@@ -117,10 +135,17 @@ class Interpreter:
             self.consume(Tokentype(val))
             name = self.current_token.value
             self.consume(Tokentype.STRING)
-            with open(name+".bas", 'wb') as writefile:
+            with open(name + ".bas", 'wb') as writefile:
                 pickle.dump(self.program, writefile)
         elif val == "REM":
             pass  # do nothing ignore remarks
+        elif val == "DIM":
+            self.consume(Tokentype(val))
+            self.compileDim()
+        elif val == "?":
+            self.consume(Tokentype.DEBUG)
+            print("Symbol Table {}".format(self.symboltable))
+            print("Loop Table {}".format(self.looptable))
         else:
             self.error()
         while self.current_token.type != Tokentype.COLON and self.current_token.type != Tokentype.EOF:
@@ -132,10 +157,33 @@ class Interpreter:
     def compileLet(self):
         # 'let' Identifier ('['expression']')? '=' expression ';'
         name = self.current_token.value
+        pos = 0
         self.consume(Tokentype.IDENTIFIER)
+        while self.current_token.type == Tokentype.LBRACK:
+            self.consume(Tokentype.LBRACK)
+            pos = self.compileExpression()
+            self.consume(Tokentype.RBRACK)
         self.consume(Tokentype.EQUALS)
         result = self.compileExpression()
-        self.symboltable.update({name: result})
+        if name in self.symboltable:
+            items = self.symboltable.get(name)
+        else:
+            items = [0]  # create a list to manipulate
+        if pos < len(items):
+            items[pos] = result
+        else:
+            raise self.error("Subscript out of range")
+        self.symboltable.update({name: items})
+
+    def compileDim(self):
+        # 'dim' Identifier '[' expression ']'
+        name = self.current_token.value
+        self.consume(Tokentype.IDENTIFIER)
+        self.consume(Tokentype.LBRACK)
+        result = self.compileExpression()
+        self.consume(Tokentype.RBRACK)
+        var = [0 for i in range(result)]
+        self.symboltable.update({name: var})
 
     def compilePrint(self):
         # 'print'  expression (';' expression )*
@@ -160,6 +208,37 @@ class Interpreter:
                 self.consume(Tokentype.ELSE)
                 self.compileStatement()
 
+    def compileFor(self):
+        # FOR identifier "=" expr "TO" expr (STEP expr)?
+        name = self.current_token.value
+        self.consume(Tokentype.IDENTIFIER)
+        self.consume(Tokentype.EQUALS)
+        e1 = self.compileExpression()
+        self.consume(Tokentype.TO)
+        e2 = self.compileExpression()
+        step = 1  # default to 1, override if step is set
+        while self.current_token.type == Tokentype.STEP:
+            self.consume(Tokentype.STEP)
+            step = self.compileExpression()
+        if name not in self.looptable:
+            self.symboltable.update({name: [e1]})
+            self.looptable.update({name: Loop(e1, e2, self.linepos, step)})
+
+    def compileNext(self):
+        # Next identifier
+        name = self.current_token.value
+        self.consume(Tokentype.IDENTIFIER)
+        if name in self.looptable:
+            loop = self.looptable.get(name)
+            val = self.symboltable.get(name)
+            if val[0] < loop.end:
+                self.symboltable.update({name: [val[0] + loop.step]})
+                self.linepos = loop.line - 1  # deduct one to account for increment after execution
+            else:
+                self.looptable.pop(name)
+        else:
+            self.error("NEXT without FOR")
+
     def compileList(self):
         for lineno, code in sorted(self.program.items()):
             print("{} {}".format(lineno, code))
@@ -182,10 +261,10 @@ class Interpreter:
         self.consume(Tokentype.INTEGER)
         if token.value in self.steps:
             # reset linepos
-              self.linepos = self.steps.index(token.value) - 1  # remove 1 to account for increment instruction after the goto is executed
+            self.linepos = self.steps.index(
+                token.value) - 1  # remove 1 to account for increment instruction after the goto is executed
         else:
             self.error("Line number does not exist")
-
 
     def compileExpression(self):
         # expression: term ( +|-|=|<|>|>=|<=|<> term)*
@@ -230,7 +309,7 @@ class Interpreter:
         return result
 
     def compileFactor(self):
-        # factor: integer | identifier | string | (expr) | RND(integer)
+        # factor: integer | identifier ('['expr']')? | string | (expr) | RND '(' integer ')'
         token = self.current_token
         if token.type == Tokentype.INTEGER:
             self.consume(Tokentype.INTEGER)
@@ -244,10 +323,18 @@ class Interpreter:
             self.consume(Tokentype.RPAREN)
             return random.randint(1, val)
         elif token.type == Tokentype.IDENTIFIER:
+            pos = 0
             self.consume(Tokentype.IDENTIFIER)
+            while self.current_token.type == Tokentype.LBRACK:
+                self.consume(Tokentype.LBRACK)
+                pos = self.compileExpression()
+                self.consume(Tokentype.RBRACK)
             if token.value in self.symboltable:
-                result = self.symboltable.get(token.value)
-                return result
+                items = self.symboltable.get(token.value)
+                if pos < len(items):
+                    return items[pos]
+                else:
+                    raise self.error("Subscript out of range")
             else:
                 self.error("Variable not declared")
         elif token.type == Tokentype.STRING:
