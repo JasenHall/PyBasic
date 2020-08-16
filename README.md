@@ -1,6 +1,12 @@
 # PyBasic
 Simple Basic Interpreter
 
+Statements can either be interpreted directly or enter a line number in front to create a program which can be run, saved and loaded.
+
+Lines are edited by reentering them.
+
+Lines can be removed by just entering the line number.
+
 ### Variables
 
 > **LET** var = *expression*
@@ -13,11 +19,11 @@ Simple Basic Interpreter
 
 > **FOR** var = *expression* **TO** *expression* (**STEP** *expression*)
 >
->      *statements*
+> *statements*
 >
 > **NEXT** var
 
-> **IF** expression **THEN** statement **ELSE** statement
+> **IF** expression **THEN** statement (**ELSE** statement)
 
 > **GOTO** linenumber
 
