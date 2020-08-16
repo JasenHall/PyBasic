@@ -1,3 +1,6 @@
+"""
+Machine.py
+"""
 from interpreter import Interpreter
 import re
 

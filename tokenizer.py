@@ -1,3 +1,6 @@
+"""
+Tokenizer.py
+"""
 import enum
 
 # Language KEYWORDS

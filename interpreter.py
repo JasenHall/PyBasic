@@ -1,3 +1,7 @@
+"""
+Interpreter.py
+
+"""
 from tokenizer import Tokentype, Lexer
 import pickle
 import random
@@ -314,7 +318,7 @@ class Interpreter:
         if token.type == Tokentype.INTEGER:
             self.consume(Tokentype.INTEGER)
             return token.value
-        if token.type == Tokentype.RND:
+        elif token.type == Tokentype.RND:
             self.consume(Tokentype.RND)
             self.consume(Tokentype.LPAREN)
             token = self.current_token
